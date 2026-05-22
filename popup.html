@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>YouTube Channel Selector</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <h1 id="channelName">YouTube Channel Selector</h1>
+    <div class="header-actions">
+      <button id="refreshBtn" class="btn btn-outline btn-sm" title="Refresh">↻ Refresh</button>
+      <button id="optionsBtn" class="btn btn-outline btn-sm" title="API Key Settings">⚙</button>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar" id="toolbar">
+    <div class="sort-group">
+      <button class="btn btn-outline btn-sm active" id="sortLatest">Latest</button>
+      <button class="btn btn-outline btn-sm" id="sortPopular">Most Popular</button>
+    </div>
+    <button class="btn btn-outline btn-sm" id="selectAll">Select All</button>
+    <button class="btn btn-outline btn-sm btn-danger" id="deselectAll">Clear</button>
+    <span class="selection-info" id="selectionInfo">Selected: 0 / 250</span>
+  </div>
+
+  <!-- Loading state -->
+  <div class="loading hidden" id="loadingState">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Fetching videos...</div>
+  </div>
+
+  <!-- Error / empty state -->
+  <div class="state-msg hidden" id="stateMsg">
+    <div class="icon" id="stateIcon"></div>
+    <div class="msg" id="stateText"></div>
+  </div>
+
+  <!-- Video list -->
+  <div class="video-list hidden" id="videoList"></div>
+
+  <!-- Footer -->
+  <div class="footer" id="footer">
+    <span style="font-size:11px; color:var(--text-secondary);" id="footerInfo"></span>
+    <button class="btn push-btn" id="pushBtn" disabled>Add to NotebookLM</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

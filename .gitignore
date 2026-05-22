@@ -1,0 +1,9 @@
+node_modules/
+*.env
+.env.local
+options-data.json
+*.crx
+*.pem
+thumbs.db
+desktop.ini
+.DS_Store

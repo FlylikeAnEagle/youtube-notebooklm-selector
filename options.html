@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>YouTube Channel Selector - Options</title>
+  <link rel="stylesheet" href="popup.css">
+  <style>
+    body {
+      max-width: 520px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    h1 { font-size: 18px; margin-bottom: 20px; }
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      padding: 8px 10px;
+      background: #222;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .field input:focus {
+      outline: none;
+      border-color: #3ea6ff;
+    }
+    .status {
+      font-size: 12px;
+      margin-top: 8px;
+      min-height: 18px;
+    }
+    .status.ok { color: #4caf50; }
+    .status.err { color: #f44336; }
+    button {
+      background: #3ea6ff;
+      color: #000;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #65b8ff; }
+  </style>
+</head>
+<body>
+  <h1>YouTube API Key</h1>
+  <div class="field">
+    <label for="apiKey">YouTube Data API v3 Key</label>
+    <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off">
+  </div>
+  <button id="save">Save</button>
+  <div id="status" class="status"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>
