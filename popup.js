@@ -8,6 +8,7 @@ let selectedIds = new Set();
 let currentSort = 'latest';
 let currentChannelId = null;
 let channelIdentifier = null;
+let hideShorts = false;
 
 // DOM refs
 const channelNameEl = document.getElementById('channelName');
@@ -25,6 +26,7 @@ const sortLatest = document.getElementById('sortLatest');
 const sortPopular = document.getElementById('sortPopular');
 const selectAllBtn = document.getElementById('selectAll');
 const deselectAllBtn = document.getElementById('deselectAll');
+const hideShortsBtn = document.getElementById('hideShorts');
 const refreshBtn = document.getElementById('refreshBtn');
 const optionsBtn = document.getElementById('optionsBtn');
 
@@ -64,7 +66,10 @@ function updateSelectionUI() {
   const count = selectedIds.size;
   selectionInfo.textContent = `Selected: ${count} / ${MAX_SELECTION}`;
   pushBtn.disabled = count === 0;
-  footerInfo.textContent = `${allVideos.length} videos`;
+  const shortsCount = allVideos.filter(v => v.duration > 0 && v.duration < 60).length;
+  footerInfo.textContent = shortsCount > 0
+    ? `${allVideos.length} videos (${shortsCount} Shorts)`
+    : `${allVideos.length} videos`;
 
   // Disable unchecked checkboxes when at limit
   const checkboxes = videoList.querySelectorAll('input[type="checkbox"]');
@@ -78,7 +83,10 @@ function updateSelectionUI() {
 // ---- render ----
 
 function getSortedVideos() {
-  const sorted = [...allVideos];
+  let sorted = [...allVideos];
+  if (hideShorts) {
+    sorted = sorted.filter(v => !v.duration || v.duration >= 60);
+  }
   if (currentSort === 'latest') {
     sorted.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
   } else {
@@ -179,15 +187,42 @@ deselectAllBtn.addEventListener('click', () => {
   renderVideos();
 });
 
+hideShortsBtn.addEventListener('click', () => {
+  hideShorts = !hideShorts;
+  hideShortsBtn.classList.toggle('active', hideShorts);
+  // Deselect any shorts that will be hidden
+  if (hideShorts) {
+    for (const v of allVideos) {
+      if (v.duration > 0 && v.duration < 60) {
+        selectedIds.delete(v.videoId);
+      }
+    }
+  }
+  renderVideos();
+});
+
 // ---- push to NotebookLM ----
 
 pushBtn.addEventListener('click', async () => {
   const urls = [...selectedIds].map(id => `https://www.youtube.com/watch?v=${id}`);
+  console.log('[YT→NLM Popup] Push clicked, sending', urls.length, 'URLs');
+
+  // Warn about NotebookLM source limits
+  if (urls.length > 300) {
+    showError('⚠', `NotebookLM allows max 300 sources per notebook.<br>You selected ${urls.length} videos. Please select 300 or fewer.`);
+    return;
+  }
+  if (urls.length > 200) {
+    // Soft warning but allow proceed
+    if (!confirm(`You selected ${urls.length} videos. NotebookLM's source limit is 300 per notebook. Proceed?`)) return;
+  }
+
   pushBtn.disabled = true;
   pushBtn.textContent = 'Opening NotebookLM...';
 
   try {
     const response = await sendMessage({ type: 'PUSH_NOTEBOOKLM', urls });
+    console.log('[YT→NLM Popup] Background response:', response);
     if (response?.ok) {
       pushBtn.textContent = 'Opened in new tab';
       setTimeout(() => {
@@ -255,8 +290,16 @@ function sendMessage(msg) {
 // ---- main flow ----
 
 async function init() {
-  // Get current tab
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  // Get current tab — handle both browser-action popup and standalone window
+  let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  // If opened from inline YouTube button as a separate window, the active tab
+  // won't be YouTube — find the YouTube channel tab in any window instead
+  if (!tab?.url || !YT_URL_REGEX.test(tab.url)) {
+    const ytTabs = await chrome.tabs.query({ url: 'https://www.youtube.com/*' });
+    tab = ytTabs.find(t => YT_URL_REGEX.test(t.url)) || tab;
+  }
+
   if (!tab?.url) {
     showError('⚠', 'Cannot detect current tab.');
     return;
@@ -352,7 +395,10 @@ async function fetchVideos(identifier, forceRefresh = false) {
     } else if (msg.includes('CHANNEL_NOT_FOUND')) {
       showError('🔍', 'Channel not found. Check the URL and try again.');
     } else if (msg.includes('quotaExceeded')) {
-      showError('🚫', 'YouTube API quota exceeded. Try again tomorrow or use a different API key.');
+      const now = new Date();
+      const pacificNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+      const resetHour = pacificNow.getHours() < 12 ? 'today' : 'tomorrow';
+      showError('🚫', `YouTube API quota exceeded. Quota resets at midnight Pacific Time (${resetHour}).<br>Use a different API key in the meantime.`);
     } else {
       showError('❌', `Error: ${escapeHtml(msg)}`);
     }
@@ -363,6 +409,27 @@ async function fetchVideos(identifier, forceRefresh = false) {
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'FETCH_PROGRESS') {
     loadingText.textContent = `Fetching videos... ${msg.count} loaded (page ${msg.page})`;
+  }
+  if (msg.type === 'NLM_PROGRESS') {
+    if (msg.phase === 'waiting_login') {
+      pushBtn.textContent = 'Waiting for sign-in...';
+    } else if (msg.phase === 'login_required') {
+      pushBtn.textContent = 'Sign in to NotebookLM first!';
+      pushBtn.disabled = false;
+      setTimeout(() => {
+        pushBtn.textContent = 'Add to NotebookLM';
+        pushBtn.disabled = selectedIds.size === 0;
+      }, 5000);
+    } else if (msg.phase === 'complete') {
+      pushBtn.textContent = `Done! ${msg.added} added`;
+      pushBtn.disabled = false;
+      setTimeout(() => {
+        pushBtn.textContent = 'Add to NotebookLM';
+        pushBtn.disabled = selectedIds.size === 0;
+      }, 3000);
+    } else if (msg.phase === 'importing') {
+      pushBtn.textContent = `Adding... ${msg.added} / ${msg.total}`;
+    }
   }
 });
 

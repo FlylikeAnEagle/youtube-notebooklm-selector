@@ -7,3 +7,6 @@ options-data.json
 thumbs.db
 desktop.ini
 .DS_Store
+nlm-browser-profile/
+nlm-api-capture.json
+capture-nlm-api.js
